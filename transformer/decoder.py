@@ -23,6 +23,9 @@ class DecoderLayer(nn.Module):
         # tgt_mask: [tgt_sequence_length, tgt_sequence_length]
         # mem_mask: [tgt_sequence_length, src_sequence_length]
 
+        if tgt is None:
+            tgt = src
+
         residual = tgt
         tgt, _ = self.self_attention(query=tgt, key=tgt, value=tgt, mask=tgt_mask)
         tgt = self.self_attention_layer_norm(tgt + residual)
@@ -48,7 +51,7 @@ class Decoder(nn.Module):
             [DecoderLayer(d_model, nhead, d_ffn) for _ in range(num_decoder_layers)]
         )
 
-    def forward(self, src, tgt, tgt_mask=None, mem_mask=None):
+    def forward(self, src, tgt=None, tgt_mask=None, mem_mask=None):
         # src: [batch_size, src_sequence_length, d_model]
         # tgt: [batch_size, tgt_sequence_length, d_model]
         # tgt_mask: [tgt_sequence_length, tgt_sequence_length]
