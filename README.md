@@ -10,3 +10,7 @@ It was tested on synthetic data, try to use the attention plots to figure out th
 - Parallel `MultiHeadAttention` outperforms the for loop implementation significantly, as expected.
 - Assumes `batch_first=True` input by default and cna't be changed.
 - Uses `einsum` for attention computation rather than `bmm` for readability, this might impact performance.
+
+# KV Cache Branch
+
+<img width="567" height="455" alt="image" src="https://github.com/user-attachments/assets/4c11adec-6eab-45c4-ba51-723f71eefd52" />
