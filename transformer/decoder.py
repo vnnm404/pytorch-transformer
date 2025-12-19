@@ -5,34 +5,35 @@ from .feed_forward import FeedForward
 
 
 class DecoderLayer(nn.Module):
-    def __init__(self, d_model, nhead, d_ffn):
+    def __init__(self, d_model, nhead, d_ffn, use_kv_cache=False):
         super(DecoderLayer, self).__init__()
 
-        self.self_attention = MultiHeadAttention(d_model, nhead)
+        self.self_attention = MultiHeadAttention(d_model, nhead, use_kv_cache=use_kv_cache)
         self.self_attention_layer_norm = nn.LayerNorm(d_model)
 
-        self.encoder_decoder_attention = MultiHeadAttention(d_model, nhead)
+        self.encoder_decoder_attention = MultiHeadAttention(d_model, nhead, use_kv_cache=use_kv_cache)
         self.encoder_decoder_layer_norm = nn.LayerNorm(d_model)
 
         self.feed_forward = FeedForward(d_model, d_ffn)
         self.feed_forward_layer_norm = nn.LayerNorm(d_model)
 
-    def forward(self, src, tgt, tgt_mask=None, mem_mask=None):
+    def forward(self, src, tgt, tgt_mask=None, mem_mask=None, kv_cache=None):
         # src: [batch_size, src_sequence_length, d_model]
         # tgt: [batch_size, tgt_sequence_length, d_model]
         # tgt_mask: [tgt_sequence_length, tgt_sequence_length]
         # mem_mask: [tgt_sequence_length, src_sequence_length]
+        # kv_cache: dict[str, Tensor]  always has "key" and "value" entries if not None
 
         if tgt is None:
             tgt = src
-
-        residual = tgt
-        tgt, _ = self.self_attention(query=tgt, key=tgt, value=tgt, mask=tgt_mask)
-        tgt = self.self_attention_layer_norm(tgt + residual)
+        else:
+            residual = tgt
+            tgt, _ = self.self_attention(query=tgt, key=tgt, value=tgt, mask=tgt_mask)
+            tgt = self.self_attention_layer_norm(tgt + residual)
 
         residual = tgt
         tgt, _ = self.encoder_decoder_attention(
-            query=tgt, key=src, value=src, mask=mem_mask
+            query=tgt, key=src, value=src, mask=mem_mask, kv_cache=kv_cache
         )
         tgt = self.encoder_decoder_layer_norm(tgt + residual)
 
@@ -51,13 +52,13 @@ class Decoder(nn.Module):
             [DecoderLayer(d_model, nhead, d_ffn) for _ in range(num_decoder_layers)]
         )
 
-    def forward(self, src, tgt=None, tgt_mask=None, mem_mask=None):
+    def forward(self, src, tgt=None, tgt_mask=None, mem_mask=None, kv_cache=None):
         # src: [batch_size, src_sequence_length, d_model]
         # tgt: [batch_size, tgt_sequence_length, d_model]
         # tgt_mask: [tgt_sequence_length, tgt_sequence_length]
         # mem_mask: [tgt_sequence_length, src_sequence_length]
 
         for decoder in self.decoders:
-            tgt = decoder(src, tgt, tgt_mask, mem_mask)
+            tgt = decoder(src, tgt, tgt_mask, mem_mask, kv_cache)
 
         return tgt

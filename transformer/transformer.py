@@ -6,7 +6,7 @@ from .decoder import Decoder
 
 class Transformer(nn.Module):
     def __init__(
-        self, d_model, nhead, num_encoder_layers, num_decoder_layers, d_ffn, dropout
+        self, d_model, nhead, num_encoder_layers, num_decoder_layers, d_ffn
     ):
         super(Transformer, self).__init__()
 
@@ -18,7 +18,7 @@ class Transformer(nn.Module):
 
         self.decoder = Decoder(d_model, nhead, num_decoder_layers, d_ffn)
 
-    def forward(self, src, tgt=None, src_mask=None, tgt_mask=None, mem_mask=None):
+    def forward(self, src, tgt=None, src_mask=None, tgt_mask=None, mem_mask=None, kv_cache=None):
         # src: [batch_size, src_sequence_length, d_model]
         # tgt: [batch_size, tgt_sequence_length, d_model]
         # src_mask: [src_sequence_length, src_sequence_length]
@@ -30,7 +30,7 @@ class Transformer(nn.Module):
         else:
             encoder_outputs = self.encoder(src, src_mask)
 
-        outputs = self.decoder(encoder_outputs, tgt, tgt_mask, mem_mask)
+        outputs = self.decoder(encoder_outputs, tgt, tgt_mask, mem_mask, kv_cache)
         return outputs
 
     @staticmethod

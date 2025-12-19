@@ -85,7 +85,7 @@ class MultiHeadAttentionSlow(nn.Module):
 
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, d_model, nhead):
+    def __init__(self, d_model, nhead, use_kv_cache=False):
         super(MultiHeadAttention, self).__init__()
 
         if d_model % nhead != 0:
@@ -97,12 +97,29 @@ class MultiHeadAttention(nn.Module):
         self.W_key = nn.Linear(d_model, d_model)
         self.W_value = nn.Linear(d_model, d_model)
         self.projection = nn.Linear(d_model, d_model)
+        
+        self.kv_cache = None if not use_kv_cache else {"key": None, "value": None}
 
-    def forward(self, query, key, value, mask=None):
+    def forward(self, query, key, value, mask=None, kv_cache=None):
         # query: [batch_size, output_sequence_length, d_model]
         # key: [batch_size, input_sequence_length, d_model]
         # value: [batch_size, input_sequence_length, d_model]
         # mask: [output_sequence_length, input_sequence_length]
+        # kv_cache: dict[str, Tensor]  always has "key" and "value" entries if not None
+
+        # if kv_cache is not none, then append the current key and value to the cache
+        if kv_cache is not None:
+            # input_sequence_length must be 1
+            assert key.size(1) == 1 and value.size(1) == 1, "When using kv_cache, key and value must have sequence length 1."
+            if kv_cache["key"] is None:
+                kv_cache["key"] = key
+                kv_cache["value"] = value
+            else:
+                kv_cache["key"] = torch.cat([kv_cache["key"], key], dim=1)
+                kv_cache["value"] = torch.cat([kv_cache["value"], value], dim=1)
+                
+            key = kv_cache["key"]
+            value = kv_cache["value"]
 
         query = self.split(
             self.W_query(query)
